@@ -4,7 +4,7 @@ from pathlib import Path
 
 setup(
     name="",
-    version="0.0.1",
+    version="0.0.2",
     author="Giorgio Ripani",
     author_email="g.ripani93@gmail.com",
     description="",
