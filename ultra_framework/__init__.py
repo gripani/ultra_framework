@@ -1,1 +1,1 @@
-from version import __version__
+from ultra_framework.version import __version__
