@@ -17,7 +17,8 @@ class BaseRepositoryFactory(ABC):
 
     @classmethod
     @abstractmethod
-    def create_factory(cls, session: Session) -> Self: ...
+    def create_factory(cls, session: Session) -> Self:
+        """implement session dependency"""
 
     def get_repository(self, repository_name: str) -> Any:
         return self._repository_dict.get(repository_name, None)
