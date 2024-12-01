@@ -10,16 +10,14 @@ class BaseRepositoryFactory(ABC):
     repository_map: Mapping[str, Type[CRUDRepository]]
 
     def __init__(self, session: Session):
-        self._session = session
-
-    @property
-    def session(self) -> Session:
-        return self._session
+        self._repository_dict = {
+            repository_name: repository_class(session)
+            for repository_name, repository_class in self.repository_map.items()
+        }
 
     @classmethod
     @abstractmethod
     def create_factory(cls, session: Session) -> Self: ...
 
-    def make_repository(self, repository_name: str) -> Any:
-        repository_class = self.repository_map[repository_name]
-        return repository_class(self.session)
+    def get_repository(self, repository_name: str) -> Any:
+        return self._repository_dict.get(repository_name, None)
