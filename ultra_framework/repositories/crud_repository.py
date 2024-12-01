@@ -25,6 +25,7 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
 
     def save(self, entity: M) -> None:
         self.session.add(entity)
+        self.session.commit()
 
     def find_all(self, limit: int | None = None, offset: int | None = None) -> Iterable[M]:
         query = self.session.query(self.entity_class)
@@ -36,6 +37,7 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
 
     def delete(self, entity: M) -> None:
         self.session.delete(entity)
+        self.session.commit()
 
     def __filter_by_conditions(self, conditions: List[Criterion[bool]],
                                limit: int | None = None, offset: int | None = None) -> Query[M]:

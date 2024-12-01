@@ -13,6 +13,7 @@ Example:
 
 ```python
 from sqlalchemy.orm import mapped_column, Mapped
+from sqlalchemy.sql.elements import ColumnElement
 from ultra_framework.entities.sql_entity import SQLEntity
 from ultra_framework.repositories.crud_repository import CRUDRepository
 
@@ -24,10 +25,14 @@ class UserEntity(SQLEntity):
   id: Mapped[int] = mapped_column(primary_key=True)
   name: Mapped[str]
 
+  @classmethod
+  def by_id(cls, idx: int) -> ColumnElement[bool]:
+    return cls.id == idx
+
 
 class UserRepository(CRUDRepository[UserEntity]):
   entity_class = UserEntity
 
-  @CRUDRepository.auto_implement_one([lambda idx: UserEntity.id == idx])
+  @CRUDRepository.auto_implement_one([UserEntity.by_id])
   def find_by_id(self, idx: int) -> UserEntity: ...
 ```
