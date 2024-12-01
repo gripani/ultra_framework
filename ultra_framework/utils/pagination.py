@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 
 class PaginatedParams:
+
     def __init__(self,
                  page: int = Query(1, ge=1),
                  per_page: int = Query(100, ge=0)):
@@ -17,6 +18,8 @@ class PaginatedParams:
     def __str__(self) -> str:
         return f"page={self.page}, per_page={self.per_page}"
 
+    def __repr__(self):
+        return str(self)
 
 class PaginatedResponse[M: BaseModel](BaseModel):
 

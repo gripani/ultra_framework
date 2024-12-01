@@ -51,11 +51,12 @@ class JWTHandler:
 
     def encode_token(self, user: UserModel,
                      expire_minutes: int = 15) -> str:
+        expires_dt = datetime.now(UTC) + timedelta(minutes=expire_minutes)
         payload = {
             "name": user.name,
             "sub": user.email,
             "roles": RolesUtils.serialize(user.roles),
-            "expires_at": (datetime.now(UTC) + timedelta(minutes=expire_minutes)).strftime(self.datetime_fmt)
+            "expires_at": expires_dt.strftime(self.datetime_fmt)
         }
         access_token = encode(payload, self.token_key, self.token_alg)
         return access_token

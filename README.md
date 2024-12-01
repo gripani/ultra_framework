@@ -5,9 +5,9 @@ Framework for FastAPI inspired by Java Spring.
 
 * It exposes a base entity class SQLEntity that can be derived in order to define custom entities.
 * It exposes a base repository class CRUDRepository[M]  that can be derived in order to define custom repositories. The following public methods are available:
-  * save(): None
-  * find_all(): None
-  * delete(): None
+  * save(entity: M): M
+  * find_all(limit: int | None, offset: int | None): Iterable[M]
+  * delete(entity: M): None
 
 Example:
 

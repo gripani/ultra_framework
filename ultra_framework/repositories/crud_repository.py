@@ -1,4 +1,4 @@
-from typing import Iterable, List, Union, Callable, Type, Self, Any, Tuple
+from typing import Iterable, List, Union, Callable, Type, Any, Tuple
 
 from sqlalchemy import ColumnElement, LambdaElement
 from sqlalchemy.orm import Query
@@ -41,7 +41,7 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
         self.session.delete(entity)
         self.session.commit()
 
-    def __filter_by_conditions(self, conditions: List[Criterion[bool]],
+    def filter_by_conditions(self, conditions: List[Criterion[bool]],
                                limit: int | None = None, offset: int | None = None) -> Query[M]:
         query = self.session.query(self.entity_class).filter(*conditions)
         if limit:
@@ -57,17 +57,17 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
         def outer(fn: AutoImplementableMany[M]) -> AutoImplementableMany[M]:
 
             def inner(*args, **kwargs) -> Iterable[M]:
-                self: Self = args[0]
+                self: CRUDRepository = args[0]
                 params = args[1:]
                 conditions = CRUDRepository.__handle_params(fn.__name__, params, condition_calls)
 
                 if len(params) == len(condition_calls) + 2:
-                    limit, offset = params[-2:]
+                    limit, offset = list(params).reverse()[:2]
                 else:
                     limit = kwargs["limit"]
                     offset = kwargs["offset"]
 
-                return self.__filter_by_conditions(conditions, limit, offset).all()
+                return self.filter_by_conditions(conditions, limit, offset).all()
 
             return inner
 
@@ -80,10 +80,10 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
         def outer(fn: AutoImplementableOne[M]) -> AutoImplementableOne[M]:
 
             def inner(*args) -> M:
-                self: Self = args[0]
+                self: CRUDRepository = args[0]
                 params = args[1:]
                 conditions = CRUDRepository.__handle_params(fn.__name__, params, condition_calls)
-                return self.__filter_by_conditions(conditions).one()
+                return self.filter_by_conditions(conditions).one()
 
             return inner
 
@@ -92,10 +92,12 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
     @staticmethod
     def __handle_params(fn_name: str,
                         params: Tuple[Any, ...],
-                        condition_calls: List[Callable[[Any], Criterion[bool]]]) -> List[Criterion[bool]]:
+                        condition_calls: List[Callable[[Any], Criterion[bool]]]
+                        ) -> List[Criterion[bool]]:
         conditions: List[Criterion[bool]] = []
+        err_msg = f"number of arguments of method '{fn_name}' are less than number of conditions"
         if len(params) < len(condition_calls):
-            raise RuntimeError(f"number of arguments of method '{fn_name}' are less than number of conditions")
+            raise RuntimeError(err_msg)
         for param, condition_call in zip(params, condition_calls):
             conditions.append(condition_call(param))
         return conditions
