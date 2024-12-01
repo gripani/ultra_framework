@@ -7,9 +7,10 @@ from ultra_framework.repositories.crud_repository import CRUDRepository
 
 class BaseRepositoryFactory(ABC):
 
-    def __init__(self, session: Session, repository_map: Mapping[str, Type[CRUDRepository]]):
+    repository_map: Mapping[str, Type[CRUDRepository]]
+
+    def __init__(self, session: Session):
         self._session = session
-        self._repository_map = repository_map
 
     @property
     def session(self) -> Session:
@@ -20,5 +21,5 @@ class BaseRepositoryFactory(ABC):
     def create_factory(cls, session: Session) -> Self: ...
 
     def make_repository(self, repository_name: str) -> Any:
-        repository_class = self._repository_map[repository_name]
+        repository_class = self.repository_map[repository_name]
         return repository_class(self.session)
