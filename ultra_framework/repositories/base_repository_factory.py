@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Self, Type
+from typing import Self, Type, Any
 
 from sqlalchemy.orm import Session
 from ultra_framework.repositories.crud_repository import CRUDRepository
@@ -18,5 +18,5 @@ class BaseRepositoryFactory(ABC):
     @abstractmethod
     def create_factory(cls, session: Session) -> Self: ...
 
-    def make_repository[T](self, repository_class: Type[CRUDRepository[T]]) -> CRUDRepository[T]:
+    def make_repository(self, repository_class: Type[CRUDRepository]) -> Any:
         return repository_class(self.session)
