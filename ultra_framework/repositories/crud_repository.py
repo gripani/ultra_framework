@@ -1,3 +1,4 @@
+from itertools import batched
 from typing import Iterable, List, Union, Callable, Type, Any, Tuple
 
 from sqlalchemy import ColumnElement, LambdaElement
@@ -28,6 +29,15 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
         self.session.commit()
         self.session.flush()
         return entity
+
+    def save_many(self, entities: list[M], n_batch: int = 1000) -> list[M]:
+        new_entities: list[M] = []
+        for batch in batched(entities, n_batch):
+            self.session.bulk_save_objects(batch)
+            self.session.commit()
+            self.session.flush()
+            new_entities.extend(batch)
+        return new_entities
 
     def find_all(self, limit: int | None = None, offset: int | None = None) -> Iterable[M]:
         query = self.session.query(self.entity_class)

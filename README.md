@@ -8,6 +8,7 @@ Framework for FastAPI inspired by Java Spring.
 * It exposes a base entity class SQLEntity that can be derived in order to define custom entities.
 * It exposes a base repository class CRUDRepository[M]  that can be derived in order to define custom repositories. The following public methods are available:
   * save(entity: M): M
+  * save_many(entities: list[M]): list[M]
   * find_all(limit: int | None, offset: int | None): Iterable[M]
   * delete(entity: M): None
 
@@ -33,7 +34,7 @@ conn.execute(DDL("""create table users (
     id integer primary key, 
     name text
 )"""))
-conn.commit()
+conn.close()
 
 session_factory = SessionFactory(engine)
 
@@ -52,8 +53,8 @@ class UserEntity(SQLEntity):
 class UserRepository(CRUDRepository[UserEntity]):
   entity_class = UserEntity
 
-  @CRUDRepository.auto_implement_one([UserEntity.by_id])
-  def find_by_id(self, idx: int) -> UserEntity: ...
+  def find_by_id(self, idx: int) -> UserEntity:
+    return self.filter_by_conditions([UserEntity.by_id(idx)]).one()
 
 
 class RepositoryFactory(BaseRepositoryFactory):
