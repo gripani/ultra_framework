@@ -1,7 +1,7 @@
 """session_factory module"""
 from typing import Iterator
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
 from sqlalchemy.orm import sessionmaker, Session
 
 
@@ -11,7 +11,7 @@ class SessionFactory:
     def __init__(self, engine: Engine):
         self._session_maker = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    def create_session(self) -> Iterator[Session]:
+    def get_session(self) -> Iterator[Session]:
         """creates a session object from the session maker"""
         session = self._session_maker()
 
@@ -19,3 +19,10 @@ class SessionFactory:
             yield session
         finally:
             session.close()
+
+    def check_session(self, session: Session) -> tuple[Session, bool]:
+        try:
+            session.execute(text("select 1"))
+            return next(self.get_session()), True
+        except Exception:
+            return session, False

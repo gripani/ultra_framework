@@ -6,6 +6,7 @@ from ultra_framework.repositories.crud_repository import CRUDRepository
 
 
 class BaseRepositoryFactory(ABC):
+    """BaseRepositoryFactory class"""
 
     repository_map: Mapping[str, Type[CRUDRepository]]
 

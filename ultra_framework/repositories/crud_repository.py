@@ -25,6 +25,7 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
     entity_class: Type[M]
 
     def save(self, entity: M) -> M:
+
         self.session.add(entity)
         self.session.commit()
         self.session.flush()
@@ -39,7 +40,7 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
             new_entities.extend(batch)
         return new_entities
 
-    def find_all(self, limit: int | None = None, offset: int | None = None) -> Iterable[M]:
+    def find_all(self, limit: int | None = None, offset: int | None = None) -> list[M]:
         query = self.session.query(self.entity_class)
         if limit:
             query = query.limit(limit)
