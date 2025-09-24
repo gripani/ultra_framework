@@ -40,12 +40,21 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
             new_entities.extend(batch)
         return new_entities
 
-    def find_all(self, limit: int | None = None, offset: int | None = None) -> list[M]:
-        query = self.session.query(self.entity_class)
+    def find_all(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        order_by: Any | None = None
+    ) -> list[M]:
+        if order_by is None:
+            pk_key = self.entity_class.__table__.primary_key.columns[0]
+            order_by = pk_key
+        query = self.session.query(self.entity_class).order_by(order_by)
         if limit:
             query = query.limit(limit)
         if offset:
             query = query.offset(offset)
+
         return query.all()
 
     def delete(self, entity: M) -> None:
