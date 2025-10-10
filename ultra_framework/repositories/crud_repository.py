@@ -1,6 +1,7 @@
 from itertools import batched
 from typing import Iterable, List, Union, Callable, Type, Any, Tuple
 
+from requests import session
 from sqlalchemy import ColumnElement, LambdaElement
 from sqlalchemy.orm import Query
 from sqlalchemy.sql.elements import SQLCoreOperations
@@ -16,18 +17,15 @@ type Criterion[T] = Union[
     TypedColumnsClauseRole[T],
     Callable[[], ColumnElement[T] | LambdaElement]
 ]
-type AutoImplementableOne[T] = Callable[[...], T]
-type AutoImplementableMany[T] = Callable[[...], Iterable[T]]
 
 
-class CRUDRepository[M: SQLEntity](SessionMixin):
+class CRUDRepository[M: SQLEntity, ID](SessionMixin):
 
     entity_class: Type[M]
 
     def save(self, entity: M) -> M:
 
         self.session.add(entity)
-        self.session.commit()
         self.session.flush()
         return entity
 
@@ -35,7 +33,6 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
         new_entities: list[M] = []
         for batch in batched(entities, n_batch):
             self.session.bulk_save_objects(batch)
-            self.session.commit()
             self.session.flush()
             new_entities.extend(batch)
         return new_entities
@@ -47,8 +44,8 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
         order_by: Any | None = None
     ) -> list[M]:
         if order_by is None:
-            pk_key = self.entity_class.__table__.primary_key.columns[0]
-            order_by = pk_key
+            pk = self.entity_class.__table__.primary_key.columns[0]
+            order_by = pk
         query = self.session.query(self.entity_class).order_by(order_by)
         if limit:
             query = query.limit(limit)
@@ -57,67 +54,26 @@ class CRUDRepository[M: SQLEntity](SessionMixin):
 
         return query.all()
 
+    def find_by_id(self, idx: ID) -> M | None:
+        pk: ColumnElement[ID] = self.entity_class.__table__.primary_key.columns[0]
+        return self.session.query(self.entity_class).filter(pk == idx).first()
+
     def delete(self, entity: M) -> None:
         self.session.delete(entity)
-        self.session.commit()
 
-    def filter_by_conditions(self, conditions: List[Criterion[bool]],
-                               limit: int | None = None, offset: int | None = None) -> Query[M]:
-        query = self.session.query(self.entity_class).filter(*conditions)
+    def filter_by_conditions(
+            self,
+            conditions: List[Criterion[bool]],
+            limit: int | None = None,
+            offset: int | None = None,
+            order_by = None
+    ) -> Query[M]:
+        if order_by is None:
+            pk = self.entity_class.__table__.primary_key.columns[0]
+            order_by = pk
+        query = self.session.query(self.entity_class).filter(*conditions).order_by(order_by)
         if limit:
             query = query.limit(limit)
         if offset:
             query = query.offset(offset)
         return query
-
-    @staticmethod
-    def auto_implement_many(condition_calls: List[Callable[[Any], Criterion[bool]]]
-                       ) -> Callable[[AutoImplementableMany[M]], AutoImplementableMany[M]]:
-
-        def outer(fn: AutoImplementableMany[M]) -> AutoImplementableMany[M]:
-
-            def inner(*args, **kwargs) -> Iterable[M]:
-                self: CRUDRepository = args[0]
-                params = args[1:]
-                conditions = CRUDRepository.__handle_params(fn.__name__, params, condition_calls)
-
-                if len(params) == len(condition_calls) + 2:
-                    limit, offset = list(params).reverse()[:2]
-                else:
-                    limit = kwargs["limit"]
-                    offset = kwargs["offset"]
-
-                return self.filter_by_conditions(conditions, limit, offset).all()
-
-            return inner
-
-        return outer
-
-    @staticmethod
-    def auto_implement_one(condition_calls: List[Callable[[Any], Criterion[bool]]]
-                            ) -> Callable[[AutoImplementableOne[M]], AutoImplementableOne[M]]:
-
-        def outer(fn: AutoImplementableOne[M]) -> AutoImplementableOne[M]:
-
-            def inner(*args) -> M:
-                self: CRUDRepository = args[0]
-                params = args[1:]
-                conditions = CRUDRepository.__handle_params(fn.__name__, params, condition_calls)
-                return self.filter_by_conditions(conditions).one()
-
-            return inner
-
-        return outer
-
-    @staticmethod
-    def __handle_params(fn_name: str,
-                        params: Tuple[Any, ...],
-                        condition_calls: List[Callable[[Any], Criterion[bool]]]
-                        ) -> List[Criterion[bool]]:
-        conditions: List[Criterion[bool]] = []
-        err_msg = f"number of arguments of method '{fn_name}' are less than number of conditions"
-        if len(params) < len(condition_calls):
-            raise RuntimeError(err_msg)
-        for param, condition_call in zip(params, condition_calls):
-            conditions.append(condition_call(param))
-        return conditions
