@@ -3,6 +3,7 @@ from typing import Iterator
 
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.exc import SQLAlchemyError
 
 
 class SessionFactory:
@@ -24,5 +25,5 @@ class SessionFactory:
         try:
             session.execute(text("select 1"))
             return next(self.get_session()), True
-        except Exception:
+        except SQLAlchemyError:
             return session, False

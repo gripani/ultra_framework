@@ -1,7 +1,6 @@
 from itertools import batched
-from typing import Iterable, List, Union, Callable, Type, Any, Tuple
+from typing import List, Union, Callable, Type, Literal
 
-from requests import session
 from sqlalchemy import ColumnElement, LambdaElement
 from sqlalchemy.orm import Query
 from sqlalchemy.sql.elements import SQLCoreOperations
@@ -22,18 +21,18 @@ type Criterion[T] = Union[
 class CRUDRepository[M: SQLEntity, ID](SessionMixin):
 
     entity_class: Type[M]
+    pk_column_dict: dict[Literal["pk"], ColumnElement[ID]]
 
     def save(self, entity: M) -> M:
-
-        self.session.add(entity)
-        self.session.flush()
+        self.add(entity)
+        self.flush()
         return entity
 
     def save_many(self, entities: list[M], n_batch: int = 1000) -> list[M]:
         new_entities: list[M] = []
         for batch in batched(entities, n_batch):
-            self.session.bulk_save_objects(batch)
-            self.session.flush()
+            self.bulk_save_objects(batch)
+            self.flush()
             new_entities.extend(batch)
         return new_entities
 
@@ -41,12 +40,14 @@ class CRUDRepository[M: SQLEntity, ID](SessionMixin):
         self,
         limit: int | None = None,
         offset: int | None = None,
-        order_by: Any | None = None
+        order_by = None
     ) -> list[M]:
+        query = self.query(self.entity_class)
         if order_by is None:
-            pk = self.entity_class.__table__.primary_key.columns[0]
-            order_by = pk
-        query = self.session.query(self.entity_class).order_by(order_by)
+            query = query.order_by(self.pk_column_dict["pk"])
+        else:
+            query = query.order_by(order_by)
+
         if limit:
             query = query.limit(limit)
         if offset:
@@ -54,12 +55,11 @@ class CRUDRepository[M: SQLEntity, ID](SessionMixin):
 
         return query.all()
 
-    def find_by_id(self, idx: ID) -> M | None:
-        pk: ColumnElement[ID] = self.entity_class.__table__.primary_key.columns[0]
-        return self.session.query(self.entity_class).filter(pk == idx).first()
+    def find_by_pk(self, idx: ID) -> M | None:
+        return self.query(self.entity_class).filter(self.pk_column_dict["pk"] == idx).first()
 
     def delete(self, entity: M) -> None:
-        self.session.delete(entity)
+        self.delete_one(entity)
 
     def filter_by_conditions(
             self,
@@ -68,10 +68,11 @@ class CRUDRepository[M: SQLEntity, ID](SessionMixin):
             offset: int | None = None,
             order_by = None
     ) -> Query[M]:
+        query = self.query(self.entity_class).filter(*conditions)
         if order_by is None:
-            pk = self.entity_class.__table__.primary_key.columns[0]
-            order_by = pk
-        query = self.session.query(self.entity_class).filter(*conditions).order_by(order_by)
+            query = query.order_by(self.pk_column_dict["pk"])
+        else:
+            query = query.order_by(order_by)
         if limit:
             query = query.limit(limit)
         if offset:

@@ -1,2 +1,5 @@
 """version module"""
-__version__ = "0.1.1"
+from pathlib import Path
+
+__version__ = Path("VERSION").read_text(encoding="utf-8")
+

@@ -1,25 +1,24 @@
-from typing import List, Self
+from __future__ import annotations
+
+from typing import List, Self, Annotated
 
 from fastapi.params import Query
 from pydantic import BaseModel
 
 
-class PaginatedParams:
+class PaginatedParams(BaseModel):
 
-    def __init__(self,
-                 page: int = Query(1, ge=1),
-                 per_page: int = Query(100, ge=0)):
-        self.limit = per_page * page
-        self.offset = (page - 1) * per_page
+    page: Annotated[int,Query(1, ge=1)]
+    per_page: Annotated[int, Query(100, ge=0)]
 
-        self.page = page
-        self.per_page = per_page
+    @property
+    def limit(self) -> int:
+        return self.per_page
 
-    def __str__(self) -> str:
-        return f"page={self.page}, per_page={self.per_page}"
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.per_page
 
-    def __repr__(self):
-        return str(self)
 
 class PaginatedResponse[M: BaseModel](BaseModel):
 
@@ -27,7 +26,7 @@ class PaginatedResponse[M: BaseModel](BaseModel):
     fields: List[M]
 
     @classmethod
-    def paginate(cls, fields: List[M]) -> Self:
+    def paginate(cls, fields: List[M]) -> PaginatedResponse:
         return cls(
             fields=fields,
             count=len(fields)
